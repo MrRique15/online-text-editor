@@ -2,7 +2,6 @@
 
 # dependencies
 /node_modules
-/text_data
 /.pnp
 .pnp.*
 .yarn/*
