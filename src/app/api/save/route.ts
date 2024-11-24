@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
 
-// TODO: Move this to .env
-const DATA_DIR = path.join(process.cwd(), "text_data");
+const DATA_DIR = path.join(process.cwd(), process.env.TEXT_FILES || "text_data");
 
 async function ensureDataDirectory() {
   try {
