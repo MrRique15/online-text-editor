@@ -9,6 +9,7 @@ type Props = {
 export default function DynamicPage({ params }: Props) {
   const [path, setPath] = useState<string>("");
   const [content, setContent] = useState("");
+  const [lastModified, setLastModified] = useState<string>("");	
   const [saving, setSaving] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [fontColor, setFontColor] = useState<string>("text-white");
@@ -22,12 +23,18 @@ export default function DynamicPage({ params }: Props) {
         const response = await fetch("/api/save", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ path, content }),
+          body: JSON.stringify({ 
+            path: path.replace(/\//g, "-"),
+            content 
+          }),
         });
       
         if (!response.ok) {
           throw new Error("Failed to save content");
         }
+
+        const data = await response.json();
+        setLastModified(data?.lastModified || new Date().toISOString());
       }
     } catch (error) {
       console.error(error);
@@ -59,7 +66,8 @@ export default function DynamicPage({ params }: Props) {
 
         if (response.ok) {
           const data = await response.json();
-          setContent(data.content || "");
+          setContent(data?.content || "");
+          setLastModified(data?.lastModified || new Date().toISOString());
         } else {
           console.error("Failed to load content");
         }
@@ -98,7 +106,7 @@ export default function DynamicPage({ params }: Props) {
       <div className="h-screen w-full bg-gray-900 text-white flex flex-col">
         <div className="bg-gray-800 px-4 py-2 flex items-center justify-center gap-16">
           <p className="text-sm font-mono text-green-400 truncate">
-            Editing: {path || "/"}
+            Editing: {path || "/"} - Last Modified: {new Date(lastModified).toLocaleString()}
           </p>
 
           <div className="flex items-center font-mono text-gray-300">
@@ -124,6 +132,7 @@ export default function DynamicPage({ params }: Props) {
           spellCheck={false}
           value={content}
           onChange={handleContentChange}
+          disabled={loading || saving}
         ></textarea>
 
         {saving && (

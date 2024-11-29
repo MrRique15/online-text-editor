@@ -1,8 +1,5 @@
 import { NextResponse } from "next/server";
-import fs from "fs/promises";
-import path from "path";
-
-const DATA_DIR = path.join(process.cwd(), process.env.TEXT_FILES || "text_data");
+import connect from "@/utils/mongo/startMongo";
 
 export async function GET(req: Request) {
     try {
@@ -13,12 +10,25 @@ export async function GET(req: Request) {
             return NextResponse.json({ error: "Invalid path input" }, { status: 400 });
         }
 
-        const filePath = path.join(DATA_DIR, `${userPath.replace(/[-/]/g, "_")}.json`);
+        if(!process.env.DATABASE_NAME || !process.env.TEXT_COLLECTION) {
+            return NextResponse.json({ error: "Database Connection error" }, { status: 500 });
+        }
 
         try {
-            const fileContent = await fs.readFile(filePath, "utf-8");
-            const { content } = JSON.parse(fileContent);
-            return NextResponse.json({ content });
+            const client = await connect;
+            const textData = await client.db(process.env.DATABASE_NAME).collection(process.env.TEXT_COLLECTION).findOne({ path: userPath });
+
+            if (!textData) {
+                return NextResponse.json({ 
+                    content: "",
+                    lastModified: new Date().toISOString(),
+                });
+            }
+
+            return NextResponse.json({ 
+                content: textData.content,
+                lastModified: textData.lastModified,
+             });
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (error) {
             return NextResponse.json({ content: "" });

@@ -1,16 +1,5 @@
 import { NextResponse } from "next/server";
-import fs from "fs/promises";
-import path from "path";
-
-const DATA_DIR = path.join(process.cwd(), process.env.TEXT_FILES || "text_data");
-
-async function ensureDataDirectory() {
-  try {
-    await fs.mkdir(DATA_DIR, { recursive: true });
-  } catch (error) {
-    console.error("Failed to create data directory:", error);
-  }
-}
+import connect from "@/utils/mongo/startMongo";
 
 export async function POST(req: Request) {
   try {
@@ -20,15 +9,51 @@ export async function POST(req: Request) {
     if (!userPath || !content) {
       return NextResponse.json({ error: "Invalid input" }, { status: 400 });
     }
+    
+    if(!process.env.DATABASE_NAME || !process.env.TEXT_COLLECTION) {
+      return NextResponse.json({ error: "Database Connection error" }, { status: 500 });
+    }
 
-    await ensureDataDirectory();
+    const client = await connect;
+    const textData = await client.db(process.env.DATABASE_NAME).collection(process.env.TEXT_COLLECTION).findOne(
+      { path: userPath }
+    );
 
-    const filePath = path.join(DATA_DIR, `${userPath.replace(/\//g, "_")}.json`);
-    await fs.writeFile(filePath, JSON.stringify({ path: userPath, content }, null, 2));
+    if (!textData) {
+      const result = await client.db(process.env.DATABASE_NAME).collection(process.env.TEXT_COLLECTION).insertOne({  path: userPath, content, lastModified: new Date().toISOString() });
 
-    return NextResponse.json({ message: "Content saved successfully!" });
+      if (!result) {
+        return NextResponse.json({ error: "Failed to save content 1" }, { status: 500 });
+      }
+
+      const savedContent = await client.db(process.env.DATABASE_NAME).collection(process.env.TEXT_COLLECTION).findOne({ _id: result.insertedId });
+
+      if(!savedContent) {
+        return NextResponse.json({ error: "Failed to save content 2" }, { status: 500 });
+      }
+
+      return NextResponse.json({
+        content: savedContent.content,
+        lastModified: savedContent.lastModified,
+      });
+    }
+
+    const result = await client.db(process.env.DATABASE_NAME).collection(process.env.TEXT_COLLECTION).findOneAndUpdate(
+      { path: userPath },
+      { $set: { content, lastModified: new Date().toISOString() } },
+      { returnDocument: "after" }
+    );
+
+    if (!result) {
+      return NextResponse.json({ error: "Failed to save content 3" }, { status: 500 });
+    }
+
+    return NextResponse.json({
+      content: result.content,
+      lastModified: result.lastModified,
+    });
   } catch (error) {
     console.error("Error saving content:", error);
-    return NextResponse.json({ error: "Failed to save content" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to save content 4" }, { status: 500 });
   }
 }
