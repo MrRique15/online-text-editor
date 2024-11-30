@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import connect from "@/utils/mongo/startMongo";
+import { config } from "@/utils/config";
+import { decryptData } from "@/utils/crypto/encription";
 
 export async function GET(req: Request) {
     try {
@@ -10,13 +12,9 @@ export async function GET(req: Request) {
             return NextResponse.json({ error: "Invalid path input" }, { status: 400 });
         }
 
-        if(!process.env.DATABASE_NAME || !process.env.TEXT_COLLECTION) {
-            return NextResponse.json({ error: "Database Connection error" }, { status: 500 });
-        }
-
         try {
             const client = await connect;
-            const textData = await client.db(process.env.DATABASE_NAME).collection(process.env.TEXT_COLLECTION).findOne({ path: userPath });
+            const textData = await client.db(config.mongo_database).collection(config.mongo_text_collection).findOne({ path: userPath });
 
             if (!textData) {
                 return NextResponse.json({ 
@@ -26,8 +24,8 @@ export async function GET(req: Request) {
             }
 
             return NextResponse.json({ 
-                content: textData.content,
-                lastModified: textData.lastModified,
+                content: decryptData(textData.content),
+                lastModified: textData.lastModified.toISOString(),
              });
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (error) {

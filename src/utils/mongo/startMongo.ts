@@ -1,10 +1,11 @@
 import { MongoClient, ServerApiVersion } from 'mongodb'
+import { config } from '@/utils/config'
 
-if (!process.env.MONGO_URI) {
+if (!config.mongo_uri) {
   throw new Error('Invalid/Missing environment variable: "MONGO_URI"')
 }
 
-const uri = process.env.MONGO_URI
+const uri = config.mongo_uri
 const options = {
     serverApi: {
     version: ServerApiVersion.v1,
@@ -16,7 +17,7 @@ const options = {
 let client
 let clientPromise: Promise<MongoClient>
 
-if (process.env.NODE_ENV === 'development') {
+if (config.env === 'development') {
   const globalWithMongo = global as typeof globalThis & {
     _mongoClientPromise?: Promise<MongoClient>
   }

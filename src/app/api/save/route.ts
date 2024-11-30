@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import connect from "@/utils/mongo/startMongo";
+import { config } from "@/utils/config";
+import { encryptData, decryptData } from "@/utils/crypto/encription";
 
 export async function POST(req: Request) {
   try {
@@ -9,38 +11,44 @@ export async function POST(req: Request) {
     if (!userPath || !content) {
       return NextResponse.json({ error: "Invalid input" }, { status: 400 });
     }
-    
-    if(!process.env.DATABASE_NAME || !process.env.TEXT_COLLECTION) {
-      return NextResponse.json({ error: "Database Connection error" }, { status: 500 });
-    }
 
     const client = await connect;
-    const textData = await client.db(process.env.DATABASE_NAME).collection(process.env.TEXT_COLLECTION).findOne(
+    const textData = await client.db(config.mongo_database).collection(config.mongo_text_collection).findOne(
       { path: userPath }
     );
 
+    const encriptedContent = encryptData(content);
+
     if (!textData) {
-      const result = await client.db(process.env.DATABASE_NAME).collection(process.env.TEXT_COLLECTION).insertOne({  path: userPath, content, lastModified: new Date().toISOString() });
+      const result = await client.db(config.mongo_database).collection(config.mongo_text_collection).insertOne({  
+        path: userPath, 
+        content: encriptedContent, 
+        lastModified: new Date() 
+      });
 
       if (!result) {
         return NextResponse.json({ error: "Failed to save content 1" }, { status: 500 });
       }
 
-      const savedContent = await client.db(process.env.DATABASE_NAME).collection(process.env.TEXT_COLLECTION).findOne({ _id: result.insertedId });
+      const savedContent = await client.db(config.mongo_database).collection(config.mongo_text_collection).findOne({ _id: result.insertedId });
 
       if(!savedContent) {
         return NextResponse.json({ error: "Failed to save content 2" }, { status: 500 });
       }
 
       return NextResponse.json({
-        content: savedContent.content,
-        lastModified: savedContent.lastModified,
+        content: decryptData(savedContent.content),
+        lastModified: savedContent.lastModified.toISOString(),
       });
     }
 
-    const result = await client.db(process.env.DATABASE_NAME).collection(process.env.TEXT_COLLECTION).findOneAndUpdate(
+    const result = await client.db(config.mongo_database).collection(config.mongo_text_collection).findOneAndUpdate(
       { path: userPath },
-      { $set: { content, lastModified: new Date().toISOString() } },
+      { $set: { 
+          content: encriptedContent, 
+          lastModified: new Date() 
+        } 
+      },
       { returnDocument: "after" }
     );
 
@@ -49,7 +57,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({
-      content: result.content,
+      content: decryptData(result.content),
       lastModified: result.lastModified,
     });
   } catch (error) {
