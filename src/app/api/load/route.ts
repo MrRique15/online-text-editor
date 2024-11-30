@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import connect from "@/utils/mongo/startMongo";
 import { config } from "@/utils/config";
-import { decryptData } from "@/utils/crypto/encription";
+import { aes_decryptData, sha256_encryptData } from "@/utils/crypto/encription";
 
 export async function GET(req: Request) {
     try {
@@ -13,8 +13,9 @@ export async function GET(req: Request) {
         }
 
         try {
+            const encryptedPath = sha256_encryptData(userPath);
             const client = await connect;
-            const textData = await client.db(config.mongo_database).collection(config.mongo_text_collection).findOne({ path: userPath });
+            const textData = await client.db(config.mongo_database).collection(config.mongo_text_collection).findOne({ path: encryptedPath });
 
             if (!textData) {
                 return NextResponse.json({ 
@@ -24,7 +25,7 @@ export async function GET(req: Request) {
             }
 
             return NextResponse.json({ 
-                content: decryptData(textData.content),
+                content: aes_decryptData(textData.content),
                 lastModified: textData.lastModified.toISOString(),
              });
         // eslint-disable-next-line @typescript-eslint/no-unused-vars

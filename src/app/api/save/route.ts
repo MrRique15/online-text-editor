@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import connect from "@/utils/mongo/startMongo";
 import { config } from "@/utils/config";
-import { encryptData, decryptData } from "@/utils/crypto/encription";
+import { aes_encryptData, aes_decryptData, sha256_encryptData } from "@/utils/crypto/encription";
 
 export async function POST(req: Request) {
   try {
@@ -12,17 +12,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid input" }, { status: 400 });
     }
 
+    const encryptedPath = sha256_encryptData(userPath);
+    const encryptedContent = aes_encryptData(content);
+
     const client = await connect;
     const textData = await client.db(config.mongo_database).collection(config.mongo_text_collection).findOne(
-      { path: userPath }
+      { path: encryptedPath }
     );
-
-    const encriptedContent = encryptData(content);
 
     if (!textData) {
       const result = await client.db(config.mongo_database).collection(config.mongo_text_collection).insertOne({  
-        path: userPath, 
-        content: encriptedContent, 
+        path: encryptedPath, 
+        content: encryptedContent, 
         lastModified: new Date() 
       });
 
@@ -37,15 +38,15 @@ export async function POST(req: Request) {
       }
 
       return NextResponse.json({
-        content: decryptData(savedContent.content),
+        content: aes_decryptData(savedContent.content),
         lastModified: savedContent.lastModified.toISOString(),
       });
     }
 
     const result = await client.db(config.mongo_database).collection(config.mongo_text_collection).findOneAndUpdate(
-      { path: userPath },
+      { path: encryptedPath },
       { $set: { 
-          content: encriptedContent, 
+          content: encryptedContent, 
           lastModified: new Date() 
         } 
       },
@@ -57,7 +58,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({
-      content: decryptData(result.content),
+      content: aes_decryptData(result.content),
       lastModified: result.lastModified,
     });
   } catch (error) {
