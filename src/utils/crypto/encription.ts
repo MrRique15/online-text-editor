@@ -8,20 +8,21 @@ if (!secret_key || !secret_iv || !ecnryption_method) {
   throw new Error('secretKey, secretIV, and ecnryptionMethod are required')
 }
 
-// Generate secret hash with crypto to use for encryption
 const key = crypto
   .createHash('sha512')
   .update(secret_key)
   .digest('hex')
   .substring(0, 32)
-const encryptionIV = crypto
-  .createHash('sha512')
-  .update(secret_iv)
-  .digest('hex')
-  .substring(0, 16)
+
+function create_secret_iv(input: string): string {
+  return crypto.createHash('sha512').update(input).digest('hex').substring(0, 16)
+}
 
 export function aes_encryptData(data: string, custom_iv?: string): string {
-  const cipher = crypto.createCipheriv(ecnryption_method, key, custom_iv || encryptionIV)
+  const cipher = crypto.createCipheriv(
+    ecnryption_method, key, 
+    create_secret_iv(custom_iv || secret_iv)
+  )
   return Buffer.from(
     cipher.update(data, 'utf8', 'hex') + cipher.final('hex')
   ).toString('base64')
@@ -29,7 +30,10 @@ export function aes_encryptData(data: string, custom_iv?: string): string {
 
 export function aes_decryptData(encryptedData: string, custom_iv?: string): string {
   const buff = Buffer.from(encryptedData, 'base64')
-  const decipher = crypto.createDecipheriv(ecnryption_method, key, custom_iv || encryptionIV)
+  const decipher = crypto.createDecipheriv(
+    ecnryption_method, key, 
+    create_secret_iv(custom_iv || secret_iv)
+  )
   return (
     decipher.update(buff.toString('utf8'), 'hex', 'utf8') +
     decipher.final('utf8')

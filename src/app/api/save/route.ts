@@ -13,7 +13,7 @@ export async function POST(req: Request) {
     }
 
     const encryptedPath = sha256_encryptData(userPath);
-    const encryptedContent = aes_encryptData(content);
+    const encryptedContent = aes_encryptData(content, userPath);
 
     const client = await connect;
     const textData = await client.db(config.mongo_database).collection(config.mongo_text_collection).findOne(
@@ -38,7 +38,7 @@ export async function POST(req: Request) {
       }
 
       return NextResponse.json({
-        content: aes_decryptData(savedContent.content),
+        content: aes_decryptData(savedContent.content, userPath),
         lastModified: savedContent.lastModified.toISOString(),
       });
     }
@@ -58,7 +58,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({
-      content: aes_decryptData(result.content),
+      content: aes_decryptData(result.content, userPath),
       lastModified: result.lastModified,
     });
   } catch (error) {

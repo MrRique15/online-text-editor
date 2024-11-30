@@ -25,7 +25,7 @@ export async function GET(req: Request) {
             }
 
             return NextResponse.json({ 
-                content: aes_decryptData(textData.content),
+                content: aes_decryptData(textData.content, userPath),
                 lastModified: textData.lastModified.toISOString(),
              });
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
