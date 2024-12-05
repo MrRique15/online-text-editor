@@ -18,7 +18,7 @@ export default function DynamicPage({ params }: Props) {
   async function saveContent(path: string, content: string) {
     setSaving(true);
     try {
-      if(content && content.length > 5) {
+      if((content && content.length > 5) || content === "") {
 
         const response = await fetch("/api/save", {
           method: "POST",
@@ -98,7 +98,7 @@ export default function DynamicPage({ params }: Props) {
 
   useEffect(() => {
     setIsClient(true); // Marca como cliente
-    
+
     const loadLocalFontItem = (key: string, defaultValue: string): string => {
       if (typeof window === 'undefined') return defaultValue; // Garante que está no cliente
       const fromLocalStorage = window.localStorage.getItem(key) || null;

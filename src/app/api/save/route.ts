@@ -8,14 +8,23 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { path: userPath, content } = body;
 
-    if (!userPath || !content) {
+    if (!userPath) {
       return NextResponse.json({ error: "Invalid input" }, { status: 400 });
     }
-
-    const encryptedPath = sha256_encryptData(userPath);
-    const encryptedContent = aes_encryptData(content, userPath);
-
     const client = await connect;
+    const encryptedPath = sha256_encryptData(userPath);
+
+    if(content === "") {
+      //delete document from MongoDB
+      const result = await client.db(config.mongo_database).collection(config.mongo_text_collection).deleteOne({ path: encryptedPath });
+      if (!result) {
+        return NextResponse.json({ error: "Failed to save content" }, { status: 500 });
+      }
+      return NextResponse.json({ content: "", lastModified: new Date().toISOString() });
+    }
+
+    
+    const encryptedContent = aes_encryptData(content, userPath);
     const textData = await client.db(config.mongo_database).collection(config.mongo_text_collection).findOne(
       { path: encryptedPath }
     );
@@ -28,13 +37,13 @@ export async function POST(req: Request) {
       });
 
       if (!result) {
-        return NextResponse.json({ error: "Failed to save content 1" }, { status: 500 });
+        return NextResponse.json({ error: "Failed to save content" }, { status: 500 });
       }
 
       const savedContent = await client.db(config.mongo_database).collection(config.mongo_text_collection).findOne({ _id: result.insertedId });
 
       if(!savedContent) {
-        return NextResponse.json({ error: "Failed to save content 2" }, { status: 500 });
+        return NextResponse.json({ error: "Failed to save content" }, { status: 500 });
       }
 
       return NextResponse.json({
@@ -54,7 +63,7 @@ export async function POST(req: Request) {
     );
 
     if (!result) {
-      return NextResponse.json({ error: "Failed to save content 3" }, { status: 500 });
+      return NextResponse.json({ error: "Failed to save content" }, { status: 500 });
     }
 
     return NextResponse.json({
@@ -63,6 +72,6 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     console.error("Error saving content:", error);
-    return NextResponse.json({ error: "Failed to save content 4" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to save content" }, { status: 500 });
   }
 }
