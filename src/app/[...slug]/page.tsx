@@ -12,8 +12,8 @@ export default function DynamicPage({ params }: Props) {
   const [lastModified, setLastModified] = useState<string>("");	
   const [saving, setSaving] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
-  const [fontColor, setFontColor] = useState<string>("text-white");
   const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [isClient, setIsClient] = useState<boolean>(false);
 
   async function saveContent(path: string, content: string) {
     setSaving(true);
@@ -82,10 +82,48 @@ export default function DynamicPage({ params }: Props) {
   }, [params]);
 
 
+  const [fontColor, setFontColor] = useState<string>('text-white');
+  const [fontSize, setFontSize] = useState<string>((): string => {
+    if (typeof window !== 'undefined'){
+      const from_localStorage = window.localStorage.getItem('user_selected_font_size')
+      if (from_localStorage === null || from_localStorage === undefined){
+        return 'text-xs'
+      }
+
+      return `${from_localStorage}` ? from_localStorage : 'text-xs'
+    }
+    return 'text-xs'
+  });
+
+
+  useEffect(() => {
+    setIsClient(true); // Marca como cliente
+    
+    const loadLocalFontItem = (key: string, defaultValue: string): string => {
+      if (typeof window === 'undefined') return defaultValue; // Garante que está no cliente
+      const fromLocalStorage = window.localStorage.getItem(key) || null;
+      return fromLocalStorage ? fromLocalStorage : defaultValue;
+    };
+  
+    setFontColor(loadLocalFontItem('user_selected_font_color', 'text-white'));
+    setFontSize(loadLocalFontItem('user_selected_font_size', 'text-xs'));
+  }, []);
+
   const handleFontColorChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedColor = e.target.value;
     setFontColor(selectedColor);
+    if (typeof window !== 'undefined'){
+      window.localStorage.setItem('user_selected_font_color', selectedColor)
+    }
   };
+
+  const handleFontSizeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedSize = e.target.value;
+    setFontSize(selectedSize);
+    if (typeof window !== 'undefined'){
+      window.localStorage.setItem('user_selected_font_size', selectedSize)
+    }
+  }
 
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setContent(e.target.value);
@@ -100,6 +138,11 @@ export default function DynamicPage({ params }: Props) {
       }, 2000)
     );
   };
+
+  if (!isClient) {
+    // Renderiza um fallback para evitar inconsistências entre SSR e CSR
+    return null;
+  }
 
   return (
     <>
@@ -124,10 +167,27 @@ export default function DynamicPage({ params }: Props) {
               <option value="text-blue-400">Light Blue</option>
             </select>
           </div>
+          <div className="flex items-center font-mono text-gray-300">
+            <label htmlFor="fontSize" className="mr-2 text-sm">
+              Font Size:
+            </label>
+            <select
+              id="fontSize"
+              className="bg-gray-700 rounded-md p-1"
+              value={fontSize}
+              onChange={handleFontSizeChange}
+            >
+              <option value="text-xs">Extra Small</option>
+              <option value="text-sm">Small</option>
+              <option value="text-base">Base</option>
+              <option value="text-lg">Large</option>
+              <option value="text-xl">Extra Large</option>
+            </select>
+          </div>
         </div>
 
         <textarea
-          className={`flex w-full h-full bg-gray-900 p-4 outline-none resize-none ${fontColor} font-mono`}
+          className={`flex w-full h-full bg-gray-900 p-4 outline-none resize-none ${fontColor} font-mono ${fontSize}`}
           placeholder="Start typing here..."
           spellCheck={false}
           value={content}
