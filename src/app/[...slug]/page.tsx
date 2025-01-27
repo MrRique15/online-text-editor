@@ -193,6 +193,7 @@ export default function DynamicPage({ params }: Props) {
           value={content}
           onChange={handleContentChange}
           disabled={loading || saving}
+          autoFocus={true}
         ></textarea>
 
         {saving && (
