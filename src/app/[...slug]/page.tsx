@@ -6,6 +6,9 @@ type Props = {
   params: Promise<{ slug: string[] }>;
 };
 
+const TYPING_INTERVAL_SECONDS = 6;
+const PROGRESS_UPDATE_INTERVAL_MS = 50;
+
 export default function DynamicPage({ params }: Props) {
   const [path, setPath] = useState<string>("");
   const [content, setContent] = useState("");
@@ -14,6 +17,8 @@ export default function DynamicPage({ params }: Props) {
   const [loading, setLoading] = useState<boolean>(true);
   const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
   const [isClient, setIsClient] = useState<boolean>(false);
+  const [typingProgress, setTypingProgress] = useState<number>(100);
+  const [progressInterval, setProgressInterval] = useState<NodeJS.Timeout | null>(null);
 
   async function saveContent(path: string, content: string) {
     setSaving(true);
@@ -127,17 +132,47 @@ export default function DynamicPage({ params }: Props) {
 
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setContent(e.target.value);
+    setTypingProgress(0);
 
+    // Clear existing timeouts/intervals
     if (typingTimeout) {
       clearTimeout(typingTimeout);
     }
+    if (progressInterval) {
+      clearInterval(progressInterval);
+    }
 
-    setTypingTimeout(
-      setTimeout(() => {
-        saveContent(path, e.target.value);
-      }, 2000)
-    );
+    // Calculate interval steps to reach 100% just before save occurs
+    const progressStep = 100 / ((TYPING_INTERVAL_SECONDS * 1000) / PROGRESS_UPDATE_INTERVAL_MS); // Update every 50ms
+
+    // Set up progress bar update
+    const interval = setInterval(() => {
+      setTypingProgress(prev => {
+        const newProgress = prev + progressStep;
+        return newProgress > 100 ? 100 : newProgress;
+      });
+    }, PROGRESS_UPDATE_INTERVAL_MS);
+    setProgressInterval(interval);
+
+    const timeout = setTimeout(() => {
+      saveContent(path, e.target.value);
+      clearInterval(interval); // Clear the progress interval when saving starts
+      setTypingProgress(100); // Ensure progress is at 100% when saving
+    }, TYPING_INTERVAL_SECONDS * 1000);
+    
+    setTypingTimeout(timeout);
   };
+
+  useEffect(() => {
+    return () => {
+      if (progressInterval) {
+        clearInterval(progressInterval);
+      }
+      if (typingTimeout) {
+        clearTimeout(typingTimeout);
+      }
+    };
+  }, [progressInterval, typingTimeout]);
 
   if (!isClient) {
     // Renderiza um fallback para evitar inconsistências entre SSR e CSR
@@ -183,6 +218,13 @@ export default function DynamicPage({ params }: Props) {
               <option value="text-lg">Large</option>
               <option value="text-xl">Extra Large</option>
             </select>
+          </div>
+
+          <div className="w-32 h-2 bg-gray-700 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-green-500 transition-all duration-100"
+              style={{ width: `${typingProgress}%` }}
+            />
           </div>
         </div>
 
