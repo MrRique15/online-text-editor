@@ -6,6 +6,8 @@ type Props = {
   params: Promise<{ slug: string[] }>;
 };
 
+const TYPING_INTERVAL_SECONDS = 2;
+
 export default function DynamicPage({ params }: Props) {
   const [path, setPath] = useState<string>("");
   const [content, setContent] = useState("");
@@ -14,6 +16,8 @@ export default function DynamicPage({ params }: Props) {
   const [loading, setLoading] = useState<boolean>(true);
   const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
   const [isClient, setIsClient] = useState<boolean>(false);
+  const [typingProgress, setTypingProgress] = useState<number>(0);
+  const [progressInterval, setProgressInterval] = useState<NodeJS.Timeout | null>(null);
 
   async function saveContent(path: string, content: string) {
     setSaving(true);
@@ -127,17 +131,41 @@ export default function DynamicPage({ params }: Props) {
 
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setContent(e.target.value);
+    setTypingProgress(0);
 
     if (typingTimeout) {
       clearTimeout(typingTimeout);
     }
+    if (progressInterval) {
+      clearInterval(progressInterval);
+    }
+
+    // Set up progress bar update
+    const interval = setInterval(() => {
+      setTypingProgress(prev => Math.min(prev + 5, 100));
+    }, 100);
+    setProgressInterval(interval);
 
     setTypingTimeout(
       setTimeout(() => {
         saveContent(path, e.target.value);
-      }, 2000)
+        if (progressInterval) {
+          clearInterval(progressInterval);
+        }
+      }, TYPING_INTERVAL_SECONDS * 1000)
     );
   };
+
+  useEffect(() => {
+    return () => {
+      if (progressInterval) {
+        clearInterval(progressInterval);
+      }
+      if (typingTimeout) {
+        clearTimeout(typingTimeout);
+      }
+    };
+  }, [progressInterval, typingTimeout]);
 
   if (!isClient) {
     // Renderiza um fallback para evitar inconsistências entre SSR e CSR
@@ -183,6 +211,13 @@ export default function DynamicPage({ params }: Props) {
               <option value="text-lg">Large</option>
               <option value="text-xl">Extra Large</option>
             </select>
+          </div>
+
+          <div className="w-32 h-2 bg-gray-700 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-green-500 transition-all duration-100"
+              style={{ width: `${typingProgress}%` }}
+            />
           </div>
         </div>
 
