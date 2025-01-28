@@ -6,7 +6,7 @@ type Props = {
   params: Promise<{ slug: string[] }>;
 };
 
-const TYPING_INTERVAL_SECONDS = 2;
+const TYPING_INTERVAL_SECONDS = 4;
 
 export default function DynamicPage({ params }: Props) {
   const [path, setPath] = useState<string>("");
@@ -133,6 +133,7 @@ export default function DynamicPage({ params }: Props) {
     setContent(e.target.value);
     setTypingProgress(0);
 
+    // Clear existing timeouts/intervals
     if (typingTimeout) {
       clearTimeout(typingTimeout);
     }
@@ -140,20 +141,25 @@ export default function DynamicPage({ params }: Props) {
       clearInterval(progressInterval);
     }
 
+    // Calculate interval steps to reach 100% just before save occurs
+    const progressStep = 100 / ((TYPING_INTERVAL_SECONDS * 1000) / 100); // Update every 100ms
+
     // Set up progress bar update
     const interval = setInterval(() => {
-      setTypingProgress(prev => Math.min(prev + 5, 100));
+      setTypingProgress(prev => {
+        const newProgress = prev + progressStep;
+        return newProgress > 100 ? 100 : newProgress;
+      });
     }, 100);
     setProgressInterval(interval);
 
-    setTypingTimeout(
-      setTimeout(() => {
-        saveContent(path, e.target.value);
-        if (progressInterval) {
-          clearInterval(progressInterval);
-        }
-      }, TYPING_INTERVAL_SECONDS * 1000)
-    );
+    const timeout = setTimeout(() => {
+      saveContent(path, e.target.value);
+      clearInterval(interval); // Clear the progress interval when saving starts
+      setTypingProgress(100); // Ensure progress is at 100% when saving
+    }, TYPING_INTERVAL_SECONDS * 1000);
+    
+    setTypingTimeout(timeout);
   };
 
   useEffect(() => {
