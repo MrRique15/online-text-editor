@@ -44,6 +44,10 @@ export default function DynamicPage({ params }: Props) {
     } catch (error) {
       console.error(error);
     } finally {
+      // Focus back the textarea
+      if (typeof window !== 'undefined'){
+        window.document.querySelector('textarea')?.focus();
+      }
       setSaving(false);
     }
   }
@@ -102,10 +106,12 @@ export default function DynamicPage({ params }: Props) {
 
 
   useEffect(() => {
-    setIsClient(true); // Marca como cliente
+    // Marks as client
+    setIsClient(true);
 
     const loadLocalFontItem = (key: string, defaultValue: string): string => {
-      if (typeof window === 'undefined') return defaultValue; // Garante que está no cliente
+      // Ensures it's on the client
+      if (typeof window === 'undefined') return defaultValue;
       const fromLocalStorage = window.localStorage.getItem(key) || null;
       return fromLocalStorage ? fromLocalStorage : defaultValue;
     };
@@ -175,7 +181,7 @@ export default function DynamicPage({ params }: Props) {
   }, [progressInterval, typingTimeout]);
 
   if (!isClient) {
-    // Renderiza um fallback para evitar inconsistências entre SSR e CSR
+    // Renders a fallback to avoid inconsistencies between SSR and CSR
     return null;
   }
 
@@ -235,6 +241,7 @@ export default function DynamicPage({ params }: Props) {
           value={content}
           onChange={handleContentChange}
           disabled={loading || saving}
+          autoFocus={true}
         ></textarea>
 
         {saving && (
