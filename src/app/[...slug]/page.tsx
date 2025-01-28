@@ -17,7 +17,7 @@ export default function DynamicPage({ params }: Props) {
   const [loading, setLoading] = useState<boolean>(true);
   const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
   const [isClient, setIsClient] = useState<boolean>(false);
-  const [typingProgress, setTypingProgress] = useState<number>(0);
+  const [typingProgress, setTypingProgress] = useState<number>(100);
   const [progressInterval, setProgressInterval] = useState<NodeJS.Timeout | null>(null);
 
   async function saveContent(path: string, content: string) {
