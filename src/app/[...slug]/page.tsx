@@ -6,7 +6,8 @@ type Props = {
   params: Promise<{ slug: string[] }>;
 };
 
-const TYPING_INTERVAL_SECONDS = 4;
+const TYPING_INTERVAL_SECONDS = 6;
+const PROGRESS_UPDATE_INTERVAL_MS = 50;
 
 export default function DynamicPage({ params }: Props) {
   const [path, setPath] = useState<string>("");
@@ -142,7 +143,7 @@ export default function DynamicPage({ params }: Props) {
     }
 
     // Calculate interval steps to reach 100% just before save occurs
-    const progressStep = 100 / ((TYPING_INTERVAL_SECONDS * 1000) / 100); // Update every 100ms
+    const progressStep = 100 / ((TYPING_INTERVAL_SECONDS * 1000) / PROGRESS_UPDATE_INTERVAL_MS); // Update every 50ms
 
     // Set up progress bar update
     const interval = setInterval(() => {
@@ -150,7 +151,7 @@ export default function DynamicPage({ params }: Props) {
         const newProgress = prev + progressStep;
         return newProgress > 100 ? 100 : newProgress;
       });
-    }, 100);
+    }, PROGRESS_UPDATE_INTERVAL_MS);
     setProgressInterval(interval);
 
     const timeout = setTimeout(() => {
