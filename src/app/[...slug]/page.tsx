@@ -130,8 +130,9 @@ export default function DynamicPage({ params }: Props) {
     }
   }
 
-  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setContent(e.target.value);
+  const handleDivInput = (e: React.FormEvent<HTMLDivElement>) => {
+    const newContent = e.currentTarget.innerText;
+    setContent(newContent);
     setTypingProgress(0);
 
     // Clear existing timeouts/intervals
@@ -143,7 +144,7 @@ export default function DynamicPage({ params }: Props) {
     }
 
     // Calculate interval steps to reach 100% just before save occurs
-    const progressStep = 100 / ((TYPING_INTERVAL_SECONDS * 1000) / PROGRESS_UPDATE_INTERVAL_MS); // Update every 50ms
+    const progressStep = 100 / ((TYPING_INTERVAL_SECONDS * 1000) / PROGRESS_UPDATE_INTERVAL_MS);
 
     // Set up progress bar update
     const interval = setInterval(() => {
@@ -155,9 +156,9 @@ export default function DynamicPage({ params }: Props) {
     setProgressInterval(interval);
 
     const timeout = setTimeout(() => {
-      saveContent(path, e.target.value);
-      clearInterval(interval); // Clear the progress interval when saving starts
-      setTypingProgress(100); // Ensure progress is at 100% when saving
+      saveContent(path, newContent);
+      clearInterval(interval);
+      setTypingProgress(100);
     }, TYPING_INTERVAL_SECONDS * 1000);
     
     setTypingTimeout(timeout);
@@ -228,14 +229,21 @@ export default function DynamicPage({ params }: Props) {
           </div>
         </div>
 
-        <textarea
-          className={`flex w-full h-full bg-gray-900 p-4 outline-none resize-none ${fontColor} font-mono ${fontSize}`}
-          placeholder="Start typing here..."
+        <div 
+          className={`flex w-full h-full bg-gray-900 p-4 outline-none ${fontColor} font-mono ${fontSize}`}
+          style={{ whiteSpace: 'pre-wrap' }}
+          contentEditable={!loading && !saving}
+          onInput={handleDivInput}
           spellCheck={false}
-          value={content}
-          onChange={handleContentChange}
-          disabled={loading || saving}
-        ></textarea>
+        >
+          {content.split(/(`[^`]+`)/g).map((part, index) => {
+            if (part.startsWith('`') && part.endsWith('`')) {
+              const innerText = part.slice(1, -1);
+              return <span key={index} className="emphasized">{innerText}</span>;
+            }
+            return <span key={index}>{part}</span>;
+          })}
+        </div>
 
         {saving && (
           <div className="absolute flex p-2 bg-green-600 items-center justify-center gap-2 top-4 right-4 flex-row border-4 border-gray-800 rounded-xl opacity-80">
