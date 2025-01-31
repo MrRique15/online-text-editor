@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import ReactMarkdown from 'react-markdown';
+import { Header } from '@/components/Header';
+import { Sidebar } from '@/components/Sidebar';
 
 type Props = {
   params: Promise<{ slug: string[] }>;
@@ -19,6 +22,8 @@ export default function DynamicPage({ params }: Props) {
   const [isClient, setIsClient] = useState<boolean>(false);
   const [typingProgress, setTypingProgress] = useState<number>(100);
   const [progressInterval, setProgressInterval] = useState<NodeJS.Timeout | null>(null);
+  const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
 
   async function saveContent(path: string, content: string) {
     setSaving(true);
@@ -182,60 +187,72 @@ export default function DynamicPage({ params }: Props) {
   return (
     <>
       <div className="h-screen w-full bg-gray-900 text-white flex flex-col">
-        <div className="bg-gray-800 px-4 py-2 flex items-center justify-center gap-16">
-          <p className="text-sm font-mono text-green-400 truncate">
-            Editing: {path || "/"} - Last Modified: {new Date(lastModified).toLocaleString()}
-          </p>
+        <Header
+          path={path}
+          lastModified={lastModified}
+          typingProgress={typingProgress}
+          isEditing={isEditing}
+          setIsEditing={setIsEditing}
+          isSidebarOpen={isSidebarOpen}
+          setIsSidebarOpen={setIsSidebarOpen}
+        />
 
-          <div className="flex items-center font-mono text-gray-300">
-            <label htmlFor="fontColor" className="mr-2 text-sm">
-              Font Color:
-            </label>
-            <select
-              id="fontColor"
-              className="bg-gray-700 rounded-md p-1"
-              value={fontColor}
-              onChange={handleFontColorChange}
+        <Sidebar
+          isSidebarOpen={isSidebarOpen}
+          setIsSidebarOpen={setIsSidebarOpen}
+          fontColor={fontColor}
+          fontSize={fontSize}
+          handleFontColorChange={handleFontColorChange}
+          handleFontSizeChange={handleFontSizeChange}
+        />
+
+        {isEditing ? (
+          <textarea
+            className={`flex w-full h-full bg-gray-900 p-4 outline-none resize-none ${fontColor} font-mono ${fontSize}`}
+            placeholder="Start typing here... (Markdown supported)"
+            spellCheck={false}
+            value={content}
+            onChange={handleContentChange}
+            disabled={loading || saving}
+            onKeyDown={(e) => {
+              if (e.key === 'Tab') {
+                e.preventDefault();
+                const target = e.target as HTMLTextAreaElement;
+                const start = target.selectionStart;
+                const end = target.selectionEnd;
+                
+                // Single line - just add spaces at cursor
+                const newContent = content.substring(0, start) + '  ' + content.substring(end);
+                handleContentChange({ target: { value: newContent } } as React.ChangeEvent<HTMLTextAreaElement>);
+                
+                // Set cursor position after state update
+                setTimeout(() => {
+                  target.focus();
+                  target.setSelectionRange(start + 2, start + 2);
+                }, 0);
+              }
+            }}
+          />
+        ) : (
+          <div className={`w-full h-full bg-gray-900 p-4 overflow-auto ${fontColor} ${fontSize} font-mono`}>
+            <ReactMarkdown
+              components={{
+                // Style markdown elements
+                h1: ({...props}) => <h1 className={`${fontSize === 'text-xs' ? 'text-lg' : fontSize === 'text-sm' ? 'text-xl' : fontSize === 'text-base' ? 'text-2xl' : fontSize === 'text-lg' ? 'text-3xl' : 'text-4xl'} font-bold my-4`} {...props} />,
+                h2: ({...props}) => <h2 className={`${fontSize === 'text-xs' ? 'text-base' : fontSize === 'text-sm' ? 'text-lg' : fontSize === 'text-base' ? 'text-xl' : fontSize === 'text-lg' ? 'text-2xl' : 'text-3xl'} font-bold my-3`} {...props} />,
+                h3: ({...props}) => <h3 className={`${fontSize === 'text-xs' ? 'text-sm' : fontSize === 'text-sm' ? 'text-base' : fontSize === 'text-base' ? 'text-lg' : fontSize === 'text-lg' ? 'text-xl' : 'text-2xl'} font-bold my-2`} {...props} />,
+                p: ({...props}) => <p className="my-2" {...props} />,
+                ul: ({...props}) => <ul className="list-disc ml-4 my-1 space-y-0.5" {...props} />,
+                ol: ({...props}) => <ol className="list-decimal ml-4 my-1 space-y-0.5" {...props} />,
+                a: ({...props}) => <a className="text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer" {...props} />,
+                code: ({...props}) => <code className="bg-gray-800 px-1 rounded" {...props} />,
+                pre: ({...props}) => <pre className="bg-gray-800 p-2 rounded my-2 overflow-x-auto" {...props} />,
+              }}
             >
-              <option value="text-white">White</option>
-              <option value="text-green-400">Light Green</option>
-              <option value="text-blue-400">Light Blue</option>
-            </select>
+              {content}
+            </ReactMarkdown>
           </div>
-          <div className="flex items-center font-mono text-gray-300">
-            <label htmlFor="fontSize" className="mr-2 text-sm">
-              Font Size:
-            </label>
-            <select
-              id="fontSize"
-              className="bg-gray-700 rounded-md p-1"
-              value={fontSize}
-              onChange={handleFontSizeChange}
-            >
-              <option value="text-xs">Extra Small</option>
-              <option value="text-sm">Small</option>
-              <option value="text-base">Base</option>
-              <option value="text-lg">Large</option>
-              <option value="text-xl">Extra Large</option>
-            </select>
-          </div>
-
-          <div className="w-32 h-2 bg-gray-700 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-green-500 transition-all duration-100"
-              style={{ width: `${typingProgress}%` }}
-            />
-          </div>
-        </div>
-
-        <textarea
-          className={`flex w-full h-full bg-gray-900 p-4 outline-none resize-none ${fontColor} font-mono ${fontSize}`}
-          placeholder="Start typing here..."
-          spellCheck={false}
-          value={content}
-          onChange={handleContentChange}
-          disabled={loading || saving}
-        ></textarea>
+        )}
 
         {saving && (
           <div className="absolute flex p-2 bg-green-600 items-center justify-center gap-2 top-4 right-4 flex-row border-4 border-gray-800 rounded-xl opacity-80">
