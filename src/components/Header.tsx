@@ -33,7 +33,7 @@ export function Header({
         <div className="h-4 w-px bg-gray-600" />
         
         <p className="text-sm font-mono text-green-400">
-          Last Modified: {new Date(lastModified).toLocaleString()}
+          Last Modified: {lastModified.length > 0 ? new Date(lastModified).toLocaleString() : "Loading..."}
         </p>
         
         <div className="h-4 w-px bg-gray-600" />
